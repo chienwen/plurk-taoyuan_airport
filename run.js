@@ -70,7 +70,7 @@ const taskRouter = {
                     //if (flight.departure.gate && tsDiff >= 0 && tsDiff <= 1 * 3600000) {
                     if (tsDiff >= 0 && tsDiff <= 1 * 3600000) {
                     //if (true) {
-                        console.log(flight);
+                        //console.log(flight);
                         return true;
                     } 
                     return false;
@@ -93,11 +93,12 @@ const taskRouter = {
                 });
                 const tpeTime = new Date(tsNow + 3600000 * 8);
                 const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
-                const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
-                console.log(sentence);
+                if (annocements.length > 0) {
+                    const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
+                    postPlurk(sentence, 'says');
+                }
             }
         });
-        //postPlurk(`${data.sentence}`, 'thinks');
     },
 };
 
