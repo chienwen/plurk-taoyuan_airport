@@ -3,6 +3,7 @@ const airlineIATA2name = require('./lib/airlineIATA2name');
 const airportIATA2name = require('./lib/airportIATA2name');
 
 const emojiDict = {
+    'arrival': '🛬',
     'flying': '✈️ ',
     'forbidden': '⛔',
     'clock': '⏰',
@@ -55,6 +56,33 @@ const taskRouter = {
         Object.keys(this).filter(task => task !== 'all').forEach((task) => {
             console.log('Invoke task', task);
             taskRouter[task]();
+        });
+    },
+    arrival: function() {
+        aviation.getFlights({
+            arr_iata: 'tpe',
+        }, (data) => {
+            if (data) {
+                const tsNow = (new Date()).getTime();
+                const flights = data.data.filter((flight) => {
+                    const arrivalTsEstimated = (new Date(flight.arrival.estimated.replace(/\+00:00/, '+08:00'))).getTime();
+                    const tsDiff = tsNow - arrivalTsEstimated;
+                    return tsDiff >= 0 && tsDiff < 1 * 3600000;
+                });
+                const annocements = [];
+                flights.forEach((flight) => {
+                    const simpleTime = new Date(flight.arrival.estimated);
+                    const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
+                    const airlineName = airlineIATA2name(flight.airline.iata);
+                    annocements.push([emojiDict.arrival, '抵達', airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '來自', airportIATA2name(flight.departure.iata)].join(' '));
+                });
+                const tpeTime = new Date(tsNow + 3600000 * 8);
+                const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
+                if (annocements.length > 0) {
+                    const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
+                    postPlurk(sentence, 'has');
+                }
+            }
         });
     },
     departure: function() {
