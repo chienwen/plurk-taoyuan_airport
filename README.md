@@ -1,0 +1,16 @@
+With `config.ini`
+
+```
+PLURK_CONSUMER_KEY=
+PLURK_CONSUMER_SECRET=
+PLURK_OAUTH_ACCESS_TOKEN=
+PLURK_OAUTH_ACCESS_TOKEN_SECRET=
+
+CHIENWEN_SECRETARY_API_AUTH=
+```
+
+Run
+
+```
+npm run plurk all|departure [debug]
+```
