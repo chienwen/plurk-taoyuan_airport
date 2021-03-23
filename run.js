@@ -79,23 +79,31 @@ const taskRouter = {
                 flights.forEach((flight) => {
                     const simpleTime = new Date(flight.departure.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
+                    const airlineName = airlineIATA2name(flight.airline.iata);
+                    if (airlineName.match(/貨|遞|郵/)) {
+                        return;
+                    }
                     if (flight.flight_status.match(/scheduled|active/)) {
-                        let sentenceElements = [emojiDict.flying, '搭乘', airlineIATA2name(flight.airline.iata), '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)];
+                        let verb = '';
+                        if (flight.departure.gate) {
+                            verb = '搭乘';
+                        } else {
+                            verb = '準點';
+                        }
+                        let sentenceElements = [emojiDict.flying, verb, airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)];
                         if (flight.departure.gate) {
                             sentenceElements = sentenceElements.concat(['旅客請由', flight.departure.gate, '號門登機']);
-                        } else {
-                            sentenceElements = sentenceElements.concat(['登機門', '容後播報']);
                         }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
-                        annocements.push([emojiDict.forbidden, '已取消', airlineIATA2name(flight.airline.iata), '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
+                        annocements.push([emojiDict.forbidden, '已取消', airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
                     }
                 });
                 const tpeTime = new Date(tsNow + 3600000 * 8);
                 const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
                 if (annocements.length > 0) {
                     const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
-                    postPlurk(sentence, 'says');
+                    postPlurk(sentence, 'will');
                 }
             }
         });
