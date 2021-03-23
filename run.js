@@ -1,8 +1,15 @@
 const aviation = require('./lib/aviation');
 const airlineIATA2name = require('./lib/airlineIATA2name');
 const airportIATA2name = require('./lib/airportIATA2name');
+const tsNow = (new Date()).getTime();
 
 const emojiDict = {
+    'getIsPassenger': function(isPassenger) {
+        return isPassenger ? this.people : this.cargo;
+    },
+    'people': '🧑‍🤝‍🧑',
+    'departure': '🛫',
+    'cargo': '📦',
     'arrival': '🛬',
     'flying': '✈️ ',
     'forbidden': '⛔',
@@ -40,6 +47,25 @@ function postPlurk(content, qualifier) {
     });
 }
 
+function postPlurkWithTime(annocements, qualifier) {
+    if (annocements.length == 0) {
+        return;
+    }
+    const tpeTime = new Date(tsNow + 3600000 * 8);
+    const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
+    const timeFooter = emojiDict.clock + " 台北 " + tpeTimeStr;
+    let str = '';
+    while(annocements.length > 0) {
+        let nextAnnocement = annocements.pop();
+        if (timeFooter.length + str.length + nextAnnocement.length + 1 <= 360) {
+            str += nextAnnocement + "\n";
+        } else {
+            break;
+        }
+    }
+    postPlurk(str + timeFooter, qualifier);
+}
+
 function timeToDisplay(hour, minute) {
     const twoDigits = (n) => {
         if (n < 10) {
@@ -63,7 +89,6 @@ const taskRouter = {
             arr_iata: 'tpe',
         }, (data) => {
             if (data) {
-                const tsNow = (new Date()).getTime();
                 const flights = data.data.filter((flight) => {
                     const arrivalTsEstimated = (new Date(flight.arrival.estimated.replace(/\+00:00/, '+08:00'))).getTime();
                     const tsDiff = tsNow - arrivalTsEstimated;
@@ -74,14 +99,9 @@ const taskRouter = {
                     const simpleTime = new Date(flight.arrival.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
-                    annocements.push([emojiDict.arrival, '抵達', airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '來自', airportIATA2name(flight.departure.iata)].join(' '));
+                    annocements.push([emojiDict.arrival, emojiDict.getIsPassenger(flight.departure.gate) , simpleTimeStr, airlineName, flight.flight.iata, '來自', airportIATA2name(flight.departure.iata)].join(' '));
                 });
-                const tpeTime = new Date(tsNow + 3600000 * 8);
-                const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
-                if (annocements.length > 0) {
-                    const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
-                    postPlurk(sentence, 'has');
-                }
+                postPlurkWithTime(annocements, 'has');
             }
         });
     },
@@ -91,7 +111,6 @@ const taskRouter = {
             //flight_status: 'scheduled', //scheduled, active, landed, cancelled, incident, diverted
         }, (data) => {
             if (data) {
-                const tsNow = (new Date()).getTime();
                 const flights = data.data.filter((flight) => {
                     const departureTsEstimated = (new Date(flight.departure.estimated.replace(/\+00:00/, '+08:00'))).getTime();
                     const tsDiff = departureTsEstimated - tsNow;
@@ -108,31 +127,17 @@ const taskRouter = {
                     const simpleTime = new Date(flight.departure.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
-                    if (airlineName.match(/貨|遞|郵/)) {
-                        return;
-                    }
                     if (flight.flight_status.match(/scheduled|active/)) {
-                        let verb = '';
+                        let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(flight.departure.gate), simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)];
                         if (flight.departure.gate) {
-                            verb = '搭乘';
-                        } else {
-                            verb = '準點';
-                        }
-                        let sentenceElements = [emojiDict.flying, verb, airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)];
-                        if (flight.departure.gate) {
-                            sentenceElements = sentenceElements.concat(['旅客請由', flight.departure.gate, '號門登機']);
+                            sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                         }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
-                        annocements.push([emojiDict.forbidden, '已取消', airlineName, '公司', flight.flight.number, '班機', simpleTimeStr, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
+                        annocements.push([emojiDict.departure, emojiDict.forbidden, simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
                     }
                 });
-                const tpeTime = new Date(tsNow + 3600000 * 8);
-                const tpeTimeStr = (tpeTime.getUTCMonth() + 1) + '月' + tpeTime.getUTCDate() + '日 ' + timeToDisplay(tpeTime.getUTCHours(), tpeTime.getUTCMinutes());
-                if (annocements.length > 0) {
-                    const sentence = annocements.join("\n") + "\n" + emojiDict.clock + " 台北時間 " + tpeTimeStr;
-                    postPlurk(sentence, 'will');
-                }
+                postPlurkWithTime(annocements, 'will');
             }
         });
     },
