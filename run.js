@@ -77,6 +77,12 @@ function timeToDisplay(hour, minute) {
     return twoDigits(hour) + ':' + twoDigits(minute);
 }
 
+function filterFlightTimeWindow(flight, type) {
+    const tsEstimated = (new Date(flight[type].estimated.replace(/\+00:00/, '+08:00'))).getTime();
+    const tsDiff = (type === 'arrival' ? (tsNow - tsEstimated) : (tsEstimated - tsNow));
+    return tsDiff >= 0 && tsDiff < 1 * 3600000;
+}
+
 const taskRouter = {
     all: function() {
         Object.keys(this).filter(task => task !== 'all').forEach((task) => {
@@ -90,9 +96,7 @@ const taskRouter = {
         }, (data) => {
             if (data) {
                 const flights = data.data.filter((flight) => {
-                    const arrivalTsEstimated = (new Date(flight.arrival.estimated.replace(/\+00:00/, '+08:00'))).getTime();
-                    const tsDiff = tsNow - arrivalTsEstimated;
-                    return tsDiff >= 0 && tsDiff < 1 * 3600000;
+                    return filterFlightTimeWindow(flight, 'arrival');
                 });
                 const annocements = [];
                 flights.forEach((flight) => {
@@ -112,15 +116,7 @@ const taskRouter = {
         }, (data) => {
             if (data) {
                 const flights = data.data.filter((flight) => {
-                    const departureTsEstimated = (new Date(flight.departure.estimated.replace(/\+00:00/, '+08:00'))).getTime();
-                    const tsDiff = departureTsEstimated - tsNow;
-                    //if (flight.departure.gate && tsDiff >= 0 && tsDiff <= 1 * 3600000) {
-                    if (tsDiff >= 0 && tsDiff <= 1 * 3600000) {
-                    //if (true) {
-                        //console.log(flight);
-                        return true;
-                    } 
-                    return false;
+                    return filterFlightTimeWindow(flight, 'departure');
                 });
                 const annocements = [];
                 flights.forEach((flight) => {
