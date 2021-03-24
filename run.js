@@ -83,6 +83,26 @@ function filterFlightTimeWindow(flight, type) {
     return tsDiff >= 0 && tsDiff < 1 * 3600000;
 }
 
+function getUniqueFlightsMergedCodeshares(flights) {
+    const uniqFlights = flights.filter((flight) => {
+        return !flight.flight.codeshared;
+    });
+    flights.forEach((flight) => {
+        if (flight.flight.codeshared) {
+            for (let i = 0; uniqFlights.length; i++) {
+                if (uniqFlights[i].flight.iata.toLowerCase() === flight.flight.codeshared.flight_iata.toLowerCase()) {
+                    if (!uniqFlights[i].flight.aka) {
+                        uniqFlights[i].flight.aka = [];
+                    }
+                    uniqFlights[i].flight.aka.push(flight);
+                    break;
+                }
+            }
+        }
+    });
+    return uniqFlights;
+}
+
 const taskRouter = {
     all: function() {
         Object.keys(this).filter(task => task !== 'all').forEach((task) => {
@@ -98,12 +118,23 @@ const taskRouter = {
                 const flights = data.data.filter((flight) => {
                     return filterFlightTimeWindow(flight, 'arrival');
                 });
+                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
                 const annocements = [];
-                flights.forEach((flight) => {
+                flightsMergedCodeshares.forEach((flight) => {
                     const simpleTime = new Date(flight.arrival.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
-                    annocements.push([emojiDict.arrival, emojiDict.getIsPassenger(flight.departure.gate) , simpleTimeStr, airlineName, flight.flight.iata, '來自', airportIATA2name(flight.departure.iata)].join(' '));
+                    let sentenceElements = [emojiDict.arrival, emojiDict.getIsPassenger(flight.departure.gate) , simpleTimeStr];
+                    let allSharedFlights = [airlineName, flight.flight.iata];
+                    if (flight.flight.aka) {
+                        flight.flight.aka.forEach((sharedFlight) => {
+                            allSharedFlights.push(airlineIATA2name(sharedFlight.airline.iata));
+                            allSharedFlights.push(sharedFlight.flight.iata);
+                        });
+                    }
+                    sentenceElements = sentenceElements.concat(allSharedFlights);
+                    sentenceElements = sentenceElements.concat(['來自', airportIATA2name(flight.departure.iata)]);
+                    annocements.push(sentenceElements.join(" "));
                 });
                 postPlurkWithTime(annocements, 'has');
             }
@@ -119,12 +150,22 @@ const taskRouter = {
                     return filterFlightTimeWindow(flight, 'departure');
                 });
                 const annocements = [];
-                flights.forEach((flight) => {
+                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
+                flightsMergedCodeshares.forEach((flight) => {
                     const simpleTime = new Date(flight.departure.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
                     if (flight.flight_status.match(/scheduled|active/)) {
-                        let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(flight.departure.gate), simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)];
+                        let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(flight.departure.gate), simpleTimeStr];
+                        let allSharedFlights = [airlineName, flight.flight.iata];
+                        if (flight.flight.aka) {
+                            flight.flight.aka.forEach((sharedFlight) => {
+                                allSharedFlights.push(airlineIATA2name(sharedFlight.airline.iata));
+                                allSharedFlights.push(sharedFlight.flight.iata);
+                            });
+                        }
+                        sentenceElements = sentenceElements.concat(allSharedFlights);
+                        sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
                         if (flight.departure.gate) {
                             sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                         }
