@@ -174,6 +174,7 @@ const taskRouter = {
                         annocements.push([emojiDict.departure, emojiDict.forbidden, simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
                     }
                 });
+                annocements.reverse();
                 postPlurkWithTime(annocements, 'will');
             }
         });
