@@ -12,7 +12,7 @@ const emojiDict = {
     'departure': '🛫',
     'cargo': '📦',
     'arrival': '🛬',
-    'flying': '✈️ ',
+    'plane': '✈️ ',
     'forbidden': '⛔',
     'clock': '⏰',
 };
@@ -129,9 +129,7 @@ function checkedByTaoYuan(data, flights) {
             if (tdata.status.match(/CANCELLED/)) {
                 flight.flight_status = 'cancelled';
             }
-            if (tdata.aircraft) {
-                flight.aircraft = tdata.aircraft;
-            }
+            flight.aircraft = flight.aircraft || tdata.aircraft;
             ['gate', 'belt', 'counter'].forEach((col) => {
                 if (tdata[col]) {
                     flight[tdata.type][col] = tdata[col];
@@ -183,6 +181,9 @@ const taskRouter = {
                     if (flight.arrival.belt) {
                         sentenceElements = sentenceElements.concat(['行李轉盤', flight.arrival.belt]);
                     }
+                    if (flight.aircraft) {
+                        sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                    }
                     annocements.push(sentenceElements.join(" "));
                 });
                 postPlurkWithTime(annocements, 'has');
@@ -227,6 +228,9 @@ const taskRouter = {
                             if (flight.departure.gate) {
                                 sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                             }
+                        }
+                        if (flight.aircraft) {
+                            sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
                         }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
