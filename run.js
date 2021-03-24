@@ -181,9 +181,9 @@ const taskRouter = {
                     if (flight.arrival.belt) {
                         sentenceElements = sentenceElements.concat(['行李轉盤', flight.arrival.belt]);
                     }
-                    if (flight.aircraft) {
-                        sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
-                    }
+                    //if (flight.aircraft) {
+                    //    sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                    //}
                     annocements.push(sentenceElements.join(" "));
                 });
                 postPlurkWithTime(annocements, 'has');
@@ -229,9 +229,9 @@ const taskRouter = {
                                 sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                             }
                         }
-                        if (flight.aircraft) {
-                            sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
-                        }
+                        //if (flight.aircraft) {
+                        //    sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                        //}
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
                         annocements.push([emojiDict.departure, emojiDict.forbidden, simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
