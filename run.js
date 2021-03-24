@@ -89,7 +89,7 @@ function getUniqueFlightsMergedCodeshares(flights) {
     });
     flights.forEach((flight) => {
         if (flight.flight.codeshared) {
-            for (let i = 0; uniqFlights.length; i++) {
+            for (let i = 0; i < uniqFlights.length; i++) {
                 if (uniqFlights[i].flight.iata.toLowerCase() === flight.flight.codeshared.flight_iata.toLowerCase()) {
                     if (!uniqFlights[i].flight.aka) {
                         uniqFlights[i].flight.aka = [];
