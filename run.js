@@ -103,6 +103,15 @@ function getUniqueFlightsMergedCodeshares(flights) {
     return uniqFlights;
 }
 
+function isThisFlightPassenger(flight) {
+    if (flight.departure.gate) {
+        const gate = flight.departure.gate;
+        return gate.length <= 2;
+    } else {
+        return false;
+    }
+}
+
 const taskRouter = {
     all: function() {
         Object.keys(this).filter(task => task !== 'all').forEach((task) => {
@@ -124,7 +133,8 @@ const taskRouter = {
                     const simpleTime = new Date(flight.arrival.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
-                    let sentenceElements = [emojiDict.arrival, emojiDict.getIsPassenger(flight.departure.gate) , simpleTimeStr];
+                    let isPassenger = isThisFlightPassenger(flight);
+                    let sentenceElements = [emojiDict.arrival, emojiDict.getIsPassenger(isPassenger) , simpleTimeStr];
                     let allSharedFlights = [airlineName, flight.flight.iata];
                     if (flight.flight.aka) {
                         flight.flight.aka.forEach((sharedFlight) => {
@@ -156,7 +166,8 @@ const taskRouter = {
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
                     if (flight.flight_status.match(/scheduled|active/)) {
-                        let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(flight.departure.gate), simpleTimeStr];
+                        let isPassenger = isThisFlightPassenger(flight);
+                        let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(isPassenger), simpleTimeStr];
                         let allSharedFlights = [airlineName, flight.flight.iata];
                         if (flight.flight.aka) {
                             flight.flight.aka.forEach((sharedFlight) => {
@@ -166,7 +177,7 @@ const taskRouter = {
                         }
                         sentenceElements = sentenceElements.concat(allSharedFlights);
                         sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
-                        if (flight.departure.gate) {
+                        if (isPassenger) {
                             sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                         }
                         annocements.push(sentenceElements.join(' '));
