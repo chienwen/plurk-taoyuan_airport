@@ -1,4 +1,5 @@
 const aviation = require('./lib/aviation');
+const taoyuanAirport = require('./lib/taoyuanAirport');
 const airlineIATA2name = require('./lib/airlineIATA2name');
 const airportIATA2name = require('./lib/airportIATA2name');
 const tsNow = (new Date()).getTime();
@@ -66,14 +67,15 @@ function postPlurkWithTime(annocements, qualifier) {
     postPlurk(str + timeFooter, qualifier);
 }
 
+function twoDigits(n) {
+    if (n < 10) {
+        return '0' + n;
+    } else {
+        return '' + n;
+    }
+}
+
 function timeToDisplay(hour, minute) {
-    const twoDigits = (n) => {
-        if (n < 10) {
-            return '0' + n;
-        } else {
-            return '' + n;
-        }
-    };
     return twoDigits(hour) + ':' + twoDigits(minute);
 }
 
@@ -112,6 +114,36 @@ function isThisFlightPassenger(flight) {
     }
 }
 
+function checkedByTaoYuan(data, flights) {
+    flights.forEach((flight) => {
+        let simpleTime;
+        if (flight.departure.iata === 'TPE') {
+            simpleTime = new Date(flight.departure.scheduled);
+        } else {
+            simpleTime = new Date(flight.arrival.scheduled);
+        }
+        const simpleDateStr = simpleTime.getUTCFullYear() + '-' + twoDigits(simpleTime.getUTCMonth() + 1) + '-' + twoDigits(simpleTime.getUTCDate());
+        const taoYuanKey = flight.flight.iata + '-' + simpleDateStr;
+        if (data[taoYuanKey]) {
+            const tdata = data[taoYuanKey];
+            if (tdata.status.match(/CANCELLED/)) {
+                flight.flight_status = 'cancelled';
+            }
+            if (tdata.aircraft) {
+                flight.aircraft = tdata.aircraft;
+            }
+            ['gate', 'belt', 'counter'].forEach((col) => {
+                if (tdata[col]) {
+                    flight[tdata.type][col] = tdata[col];
+                }
+            });
+            flight.isPassenger = tdata.isPassenger;
+        } else {
+            //flight.flight_status = 'cancelled';
+        }
+    });
+}
+
 const taskRouter = {
     all: function() {
         Object.keys(this).filter(task => task !== 'all').forEach((task) => {
@@ -123,18 +155,22 @@ const taskRouter = {
         aviation.getFlights({
             arr_iata: 'tpe',
         }, (data) => {
-            if (data) {
+            if (!data) {
+                return;
+            }
+            taoyuanAirport.getFlights((taoyuanData) => {
                 const flights = data.data.filter((flight) => {
                     return filterFlightTimeWindow(flight, 'arrival');
                 });
-                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
                 const annocements = [];
+                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
+                checkedByTaoYuan(taoyuanData, flightsMergedCodeshares);
                 flightsMergedCodeshares.forEach((flight) => {
                     const simpleTime = new Date(flight.arrival.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
-                    let isPassenger = isThisFlightPassenger(flight);
-                    let sentenceElements = [emojiDict.arrival, emojiDict.getIsPassenger(isPassenger) , simpleTimeStr];
+                    let isPassenger = flight.isPassenger !== undefined ? flight.isPassenger : isThisFlightPassenger(flight);
+                    let sentenceElements = [emojiDict.arrival, flight.flight_status === 'cancelled' ? emojiDict.forbidden : emojiDict.getIsPassenger(isPassenger) , simpleTimeStr];
                     let allSharedFlights = [airlineName, flight.flight.iata];
                     if (flight.flight.aka) {
                         flight.flight.aka.forEach((sharedFlight) => {
@@ -144,10 +180,13 @@ const taskRouter = {
                     }
                     sentenceElements = sentenceElements.concat(allSharedFlights);
                     sentenceElements = sentenceElements.concat(['來自', airportIATA2name(flight.departure.iata)]);
+                    if (flight.arrival.belt) {
+                        sentenceElements = sentenceElements.concat(['行李轉盤', flight.arrival.belt]);
+                    }
                     annocements.push(sentenceElements.join(" "));
                 });
                 postPlurkWithTime(annocements, 'has');
-            }
+            });
         });
     },
     departure: function() {
@@ -155,18 +194,22 @@ const taskRouter = {
             dep_iata: 'tpe',
             //flight_status: 'scheduled', //scheduled, active, landed, cancelled, incident, diverted
         }, (data) => {
-            if (data) {
+            if (!data) {
+                return
+            }
+            taoyuanAirport.getFlights((taoyuanData) => {
                 const flights = data.data.filter((flight) => {
                     return filterFlightTimeWindow(flight, 'departure');
                 });
                 const annocements = [];
-                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
+                const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights);
+                checkedByTaoYuan(taoyuanData, flightsMergedCodeshares);
                 flightsMergedCodeshares.forEach((flight) => {
                     const simpleTime = new Date(flight.departure.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
                     if (flight.flight_status.match(/scheduled|active/)) {
-                        let isPassenger = isThisFlightPassenger(flight);
+                        let isPassenger = flight.isPassenger !== undefined ? flight.isPassenger : isThisFlightPassenger(flight);
                         let sentenceElements = [emojiDict.departure, emojiDict.getIsPassenger(isPassenger), simpleTimeStr];
                         let allSharedFlights = [airlineName, flight.flight.iata];
                         if (flight.flight.aka) {
@@ -178,7 +221,12 @@ const taskRouter = {
                         sentenceElements = sentenceElements.concat(allSharedFlights);
                         sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
                         if (isPassenger) {
-                            sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
+                            if (flight.departure.counter) {
+                                sentenceElements = sentenceElements.concat(['櫃檯', flight.departure.counter]);
+                            }
+                            if (flight.departure.gate) {
+                                sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
+                            }
                         }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
@@ -187,7 +235,7 @@ const taskRouter = {
                 });
                 annocements.reverse();
                 postPlurkWithTime(annocements, 'will');
-            }
+            });
         });
     },
 };
