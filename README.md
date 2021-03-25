@@ -12,5 +12,5 @@ AVIATIONSTACK_API_KEY=
 Run
 
 ```
-npm run plurk all|departure|arrival [debug]
+npm run plurk all|departure|arrival|clean [debug]
 ```

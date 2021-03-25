@@ -274,6 +274,24 @@ const taskRouter = {
             });
         });
     },
+    clean: function() {
+        plurk.callAPI('/APP/Timeline/getPlurks', {
+            offset: (new Date(tsNow - 86400000)).toISOString().split('.')[0]
+        }, (err, data) => {
+            if (err) {
+                console.log('ERROR', err);
+            } else {
+                data.plurks.forEach((pl) => {
+                    const id = pl.plurk_id;
+                    plurk.callAPI('/APP/Timeline/plurkDelete', {
+                        plurk_id: id
+                    }, (err, data) => {
+                        console.log("ok, deleted", id, data);
+                    });
+                });
+            }
+        });
+    },
 };
 
 if (process.argv.length < 3 || (!taskRouter[process.argv[2]])) {
