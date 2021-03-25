@@ -4,6 +4,11 @@ const airlineIATA2name = require('./lib/airlineIATA2name');
 const airportIATA2name = require('./lib/airportIATA2name');
 const tsNow = (new Date()).getTime();
 
+const SETTINGS = {
+    SHOW_AIRCRAFT: false,
+    SHOW_CANCELLED: false,
+};
+
 const emojiDict = {
     'getIsPassenger': function(isPassenger) {
         return isPassenger ? this.people : this.cargo;
@@ -136,6 +141,13 @@ function checkedByTaoYuan(data, flights) {
                 }
             });
             flight.isPassenger = tdata.isPassenger;
+            if (tdata.location_other_iata) {
+                flight[tdata.type === 'arrival' ? 'departure' : 'arrival'].original = {
+                    iata: tdata.location_other_iata,
+                    name_zh: tdata.location_other_name_zh,
+                    name_en: tdata.location_other_name_en,
+                };
+            }
         } else {
             //flight.flight_status = 'cancelled';
         }
@@ -164,6 +176,9 @@ const taskRouter = {
                 const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights); 
                 checkedByTaoYuan(taoyuanData, flightsMergedCodeshares);
                 flightsMergedCodeshares.forEach((flight) => {
+                    if ((!SETTINGS.SHOW_CANCELLED) && flight.flight_status === 'cancelled') {
+                        return;
+                    }
                     const simpleTime = new Date(flight.arrival.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
@@ -177,13 +192,17 @@ const taskRouter = {
                         });
                     }
                     sentenceElements = sentenceElements.concat(allSharedFlights);
-                    sentenceElements = sentenceElements.concat(['來自', airportIATA2name(flight.departure.iata)]);
+                    if (flight.departure.original) {
+                        sentenceElements = sentenceElements.concat(['來自', airportIATA2name(flight.departure.original.iata), '經由', airportIATA2name(flight.departure.iata)]);
+                    } else {
+                        sentenceElements = sentenceElements.concat(['來自', airportIATA2name(flight.departure.iata)]);
+                    }
                     if (flight.arrival.belt) {
                         sentenceElements = sentenceElements.concat(['行李轉盤', flight.arrival.belt]);
                     }
-                    //if (flight.aircraft) {
-                    //    sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
-                    //}
+                    if (SETTINGS.SHOW_AIRCRAFT && flight.aircraft) {
+                        sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                    }
                     annocements.push(sentenceElements.join(" "));
                 });
                 postPlurkWithTime(annocements, 'has');
@@ -206,6 +225,9 @@ const taskRouter = {
                 const flightsMergedCodeshares = getUniqueFlightsMergedCodeshares(flights);
                 checkedByTaoYuan(taoyuanData, flightsMergedCodeshares);
                 flightsMergedCodeshares.forEach((flight) => {
+                    if ((!SETTINGS.SHOW_CANCELLED) && flight.flight_status === 'cancelled') {
+                        return;
+                    }
                     const simpleTime = new Date(flight.departure.estimated);
                     const simpleTimeStr = timeToDisplay(simpleTime.getUTCHours(), simpleTime.getUTCMinutes());
                     const airlineName = airlineIATA2name(flight.airline.iata);
@@ -220,7 +242,11 @@ const taskRouter = {
                             });
                         }
                         sentenceElements = sentenceElements.concat(allSharedFlights);
-                        sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
+                        if (flight.arrival.original) {
+                            sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.original.iata), '經由', airportIATA2name(flight.arrival.iata)]);
+                        } else {
+                            sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
+                        }
                         if (isPassenger) {
                             if (flight.departure.counter) {
                                 sentenceElements = sentenceElements.concat(['櫃檯', flight.departure.counter]);
@@ -229,12 +255,18 @@ const taskRouter = {
                                 sentenceElements = sentenceElements.concat(['登機門', flight.departure.gate]);
                             }
                         }
-                        //if (flight.aircraft) {
-                        //    sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
-                        //}
+                        if (SETTINGS.SHOW_AIRCRAFT && flight.aircraft) {
+                            sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                        }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
-                        annocements.push([emojiDict.departure, emojiDict.forbidden, simpleTimeStr, airlineName, flight.flight.iata, '飛往', airportIATA2name(flight.arrival.iata)].join(' '));
+                        let sentenceElements = [emojiDict.departure, emojiDict.forbidden, simpleTimeStr, airlineName, flight.flight.iata];
+                        if (flight.arrival.original) {
+                            sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.original.iata), '經由', airportIATA2name(flight.arrival.iata)]);
+                        } else {
+                            sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.arrival.iata)]);
+                        }
+                        annocements.push(sentenceElements.join(' '));
                     }
                 });
                 annocements.reverse();
