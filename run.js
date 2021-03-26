@@ -249,6 +249,7 @@ const taskRouter = {
                         }
                         if (isPassenger) {
                             if (flight.departure.counter) {
+                                sentenceElements = sentenceElements.concat(['航廈', flight.departure.terminal]);
                                 sentenceElements = sentenceElements.concat(['櫃檯', flight.departure.counter]);
                             }
                             if (flight.departure.gate) {
