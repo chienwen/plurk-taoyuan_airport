@@ -3,6 +3,7 @@ const taoyuanAirport = require('./lib/taoyuanAirport');
 const airlineIATA2name = require('./lib/airlineIATA2name');
 const airportIATA2name = require('./lib/airportIATA2name');
 const tsNow = (new Date()).getTime();
+const logError = require('./lib/logError');
 
 const SETTINGS = {
     SHOW_AIRCRAFT: true,
@@ -160,6 +161,7 @@ function checkedByTaoYuan(data, flights) {
             }
         } else {
             //flight.flight_status = 'cancelled';
+            logError({msg: "flight not found from airport site", flight});
         }
     });
 }
