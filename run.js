@@ -5,7 +5,7 @@ const airportIATA2name = require('./lib/airportIATA2name');
 const tsNow = (new Date()).getTime();
 
 const SETTINGS = {
-    SHOW_AIRCRAFT: false,
+    SHOW_AIRCRAFT: true,
     SHOW_CANCELLED: false,
 };
 
@@ -201,7 +201,7 @@ const taskRouter = {
                         sentenceElements = sentenceElements.concat(['行李轉盤', flight.arrival.belt]);
                     }
                     if (SETTINGS.SHOW_AIRCRAFT && flight.aircraft) {
-                        sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                        sentenceElements = sentenceElements.concat(['機型', typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
                     }
                     annocements.push(sentenceElements.join(" "));
                 });
@@ -257,7 +257,7 @@ const taskRouter = {
                             }
                         }
                         if (SETTINGS.SHOW_AIRCRAFT && flight.aircraft) {
-                            sentenceElements = sentenceElements.concat([emojiDict.plane, typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
+                            sentenceElements = sentenceElements.concat(['機型', typeof flight.aircraft === 'string' ? flight.aircraft : flight.aircraft.iata]);
                         }
                         annocements.push(sentenceElements.join(' '));
                     } else if (flight.flight_status === 'cancelled') {
