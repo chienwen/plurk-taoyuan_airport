@@ -8,6 +8,7 @@ const SETTINGS = {
     SHOW_AIRCRAFT: true,
     SHOW_CANCELLED: false,
     TIME_WINDOW_HR: 1,
+    PLURK_MAX_CHARS: 360,
 };
 
 const emojiDict = {
@@ -65,7 +66,7 @@ function postPlurkWithTime(annocements, qualifier) {
     let str = '';
     while(annocements.length > 0) {
         let nextAnnocement = annocements.pop();
-        if (timeFooter.length + str.length + nextAnnocement.length + 1 <= 360) {
+        if (timeFooter.length + str.length + nextAnnocement.length + 1 <= SETTINGS.PLURK_MAX_CHARS) {
             str += nextAnnocement + "\n";
         } else {
             break;
