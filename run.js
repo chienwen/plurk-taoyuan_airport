@@ -24,7 +24,8 @@ const emojiDict = {
 };
 
 let plurk = require('./lib/plurk');
-if (process.argv.length === 4 && process.argv[3] === 'debug') {
+const IS_DEBUG = process.argv.length === 4 && process.argv[3] === 'debug';
+if (IS_DEBUG) {
     plurk = {
         callAPI: (url, param, cb) => {
             cb(null, {
@@ -237,11 +238,15 @@ const taskRouter = {
                 if (data.plurks) {
                     data.plurks.forEach((pl) => {
                         const id = pl.plurk_id;
-                        plurk.callAPI('/APP/Timeline/plurkDelete', {
-                            plurk_id: id
-                        }, (err, data) => {
-                            console.log("ok, deleted", id, data);
-                        });
+                        if (IS_DEBUG) {
+                            console.log('DEBUG', 'will delete plurk id', id);
+                        } else {
+                            plurk.callAPI('/APP/Timeline/plurkDelete', {
+                                plurk_id: id
+                            }, (err, data) => {
+                                console.log("ok, deleted", id, data);
+                            });
+                        }
                     });
                 }
                 else {
