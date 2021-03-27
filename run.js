@@ -208,7 +208,7 @@ const taskRouter = {
                 if (flight.location_other_iata) {
                     sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.location_other_iata), '經由', airportIATA2name(flight.location_iata)]);
                 } else {
-                        sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.location_iata)]);
+                    sentenceElements = sentenceElements.concat(['飛往', airportIATA2name(flight.location_iata)]);
                 }
                 if (flight.isPassenger) {
                     if (flight.counter) {
